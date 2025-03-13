@@ -17,7 +17,6 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y aggregate
-          rm -f nginx_jp_ip_list.conf  # 确保旧文件被删除
 
       - name: Fetch Japan IP list
         run: |
@@ -35,8 +34,13 @@ jobs:
             cat manual_routes.txt >> jp_cidr_aggregated.txt
           fi
 
-          # 去重 & 生成最终的 Nginx 配置文件
+          # 去重 & 生成最终的 Nginx 配置文件（修复格式问题）
           sort -u jp_cidr_aggregated.txt | awk '{print $0 " yes;"}' > nginx_jp_ip_list.conf
+          
+          # 检查第一行是否只有"yes;"，如果是，则删除它
+          if grep -q "^yes;" nginx_jp_ip_list.conf; then
+            sed -i '1d' nginx_jp_ip_list.conf
+          fi
 
           # 显示最终结果（可选）
           echo "===== Final Nginx IP List ====="
@@ -50,8 +54,8 @@ jobs:
           # 添加文件到暂存区
           git add nginx_jp_ip_list.conf
           
-          # 提交更改
-          git commit -m "Update Japan IP list [$(date -u)]"
+          # 提交更改，使用 --allow-empty 强制提交，即使没有文件变更
+          git commit -m "Update Japan IP list [$(date -u)]" --allow-empty
           
           # 推送到远程仓库
           git push
