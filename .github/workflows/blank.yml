@@ -12,6 +12,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          # 确保获取完整的仓库历史
+          fetch-depth: 0
 
       - name: Install aggregate (for IPv4 CIDR aggregation)
         run: |
@@ -42,20 +45,24 @@ jobs:
             sed -i '1d' nginx_jp_ip_list.conf
           fi
 
-          # 显示最终结果（可选）
+          # 确保文件存在
+          ls -la
           echo "===== Final Nginx IP List ====="
           cat nginx_jp_ip_list.conf
 
-      - name: Commit and push
+      - name: Commit and push if changed
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-
-          # 添加文件到暂存区
-          git add nginx_jp_ip_list.conf
           
-          # 提交更改，使用 --allow-empty 强制提交，即使没有文件变更
+          # 强制添加文件，即使没有更改
+          git add -f nginx_jp_ip_list.conf
+          
+          # 使用--allow-empty强制提交，即使没有更改
           git commit -m "Update Japan IP list [$(date -u)]" --allow-empty
           
-          # 推送到远程仓库
-          git push
+          # 确保推送成功，添加错误处理和调试信息
+          echo "Pushing changes to repository..."
+          git push || (echo "Push failed! Current status:" && git status && exit 1)
+          
+          echo "Push completed successfully"
