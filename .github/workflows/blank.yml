@@ -42,9 +42,6 @@ jobs:
           # 去重 & 生成最终的 Nginx 配置文件
           sort -u cleaned_jp_cidr.txt | awk '{print $0 " yes;"}' > nginx_jp_ip_list.conf || true
           
-          # 创建一个包含当前时间的变量，供下一步使用
-          echo "CURRENT_DATE=$(date -u)" >> $GITHUB_ENV
-          
           # 检查结果
           echo "===== Final Nginx IP List (first 10 lines) ====="
           head nginx_jp_ip_list.conf || true
@@ -52,7 +49,7 @@ jobs:
       - name: Auto commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          commit_message: "Update Japan IP list [${{ env.CURRENT_DATE }}]"
+          commit_message: "Update Japan IP list"
           file_pattern: "nginx_jp_ip_list.conf"
           commit_options: "--no-verify"
           push_options: "--force"
