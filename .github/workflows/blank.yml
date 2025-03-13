@@ -19,7 +19,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y aggregate
-          sudo rm -rf nginx_jp_ip_list.conf
+          rm -f nginx_jp_ip_list.conf  # 确保旧文件被删除
 
       - name: Fetch Japan IP list
         run: |
@@ -40,6 +40,9 @@ jobs:
           # 去重 & 生成最终的 Nginx 配置文件
           sort -u jp_cidr_aggregated.txt | awk '{print $0 " yes;"}' > nginx_jp_ip_list.conf
 
+          # 确保 Git 能检测到变化
+          echo "Last updated: $(date -u)" >> nginx_jp_ip_list.conf
+
           # 显示最终结果（可选）
           echo "===== Final Nginx IP List ====="
           cat nginx_jp_ip_list.conf
@@ -49,9 +52,14 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
 
-          # 防止手动修改的 manual_routes.txt 被覆盖
+          # 重新拉取最新代码，避免冲突
+          git fetch --all
+          git reset --hard origin/main  # 确保同步到最新分支
           git pull --rebase
 
+          # 确保 Git 发现 nginx_jp_ip_list.conf 发生变更
           git add nginx_jp_ip_list.conf
-          git commit -m "Update Japan IP list with Manual Routes for Nginx" || exit 0
-          git push
+
+          # 强制提交，即使 Git 认为没有变化
+          git commit -m "Update Japan IP list with Manual Routes at $(date -u)" --allow-empty
+          git push --force
