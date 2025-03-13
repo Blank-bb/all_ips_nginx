@@ -28,16 +28,16 @@ jobs:
           # 去除 # 号开头的注释行，并去重
           grep -v '^#' jp_cidr_raw.txt | sort -u > jp_cidr.txt
 
-          # 读取手动维护的 manual_routes.txt
-          if [[ -f manual_routes.txt ]]; then
-            cat manual_routes.txt >> jp_cidr.txt
-          fi
-
           # 使用 aggregate 进行 IPv4 CIDR 聚合
           aggregate < jp_cidr.txt > jp_cidr_aggregated.txt
 
-          # 生成最终的 Nginx 配置文件
-          awk '{print $0 " yes;"}' jp_cidr_aggregated.txt > nginx_jp_ip_list.conf
+          # 直接合并手动维护的 manual_routes.txt（确保它不会被 aggregate 过滤）
+          if [[ -f manual_routes.txt ]]; then
+            cat manual_routes.txt >> jp_cidr_aggregated.txt
+          fi
+
+          # 去重 & 生成最终的 Nginx 配置文件
+          sort -u jp_cidr_aggregated.txt | awk '{print $0 " yes;"}' > nginx_jp_ip_list.conf
 
           # 显示最终结果（可选）
           echo "===== Final Nginx IP List ====="
