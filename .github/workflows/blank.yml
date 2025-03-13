@@ -21,42 +21,37 @@ jobs:
 
       - name: Fetch Japan IP list
         run: |
-          # 下载 IP 列表
+          # 下载日本 IP 地址列表
           curl -s http://www.iwik.org/ipcountry/JP.cidr -o jp_cidr_raw.txt
           
-          # 去除注释行
+          # 去除 # 号开头的注释行，并去重
           grep -v '^#' jp_cidr_raw.txt | sort -u > jp_cidr.txt
 
-          # 进行 CIDR 聚合
+          # 使用 aggregate 进行 IPv4 CIDR 聚合
           aggregate < jp_cidr.txt > jp_cidr_aggregated.txt
 
-          # 合并手动维护的 manual_routes.txt
+          # 直接合并手动维护的 manual_routes.txt（确保它不会被 aggregate 过滤）
           if [[ -f manual_routes.txt ]]; then
             cat manual_routes.txt >> jp_cidr_aggregated.txt
           fi
 
-          # 生成 Nginx 配置文件
+          # 去重 & 生成最终的 Nginx 配置文件
           sort -u jp_cidr_aggregated.txt | awk '{print $0 " yes;"}' > nginx_jp_ip_list.conf
 
-          # 添加时间戳，确保文件总是变化
-          echo "Last updated: $(date -u)" >> nginx_jp_ip_list.conf
-
-          # 确保文件正确生成
-          ls -l nginx_jp_ip_list.conf
+          # 显示最终结果（可选）
+          echo "===== Final Nginx IP List ====="
           cat nginx_jp_ip_list.conf
 
-      - name: Commit and push changes (force commit)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit and push
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
 
-          # 添加所有更改
-          git add .
-
-          # 强制提交，即使没有内容变化
-          git commit -m "Force update Japan IP list on $(date -u)" --allow-empty
+          # 添加文件到暂存区
+          git add nginx_jp_ip_list.conf
           
-          # 强制推送
-          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
+          # 提交更改
+          git commit -m "Update Japan IP list [$(date -u)]"
+          
+          # 推送到远程仓库
+          git push
