@@ -36,27 +36,26 @@ jobs:
             cat manual_routes.txt >> jp_cidr_aggregated.txt
           fi
 
-          # 确保目录存在
-          mkdir -p all_ips_nginx
+          # 确保输出是干净的 CIDR 列表(只包含有效IP)
+          grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+$' jp_cidr_aggregated.txt > cleaned_jp_cidr.txt
 
           # 去重 & 生成最终的 Nginx 配置文件
-          sort -u jp_cidr_aggregated.txt | awk '{print $0 " yes;"}' > all_ips_nginx/nginx_jp_ip_list.conf
+          sort -u cleaned_jp_cidr.txt | awk '{print $0 " yes;"}' > nginx_jp_ip_list.conf
           
-          # 检查第一行是否只有"yes;"，如果是，则删除它
-          if grep -q "^yes;" all_ips_nginx/nginx_jp_ip_list.conf; then
-            sed -i '1d' all_ips_nginx/nginx_jp_ip_list.conf
-          fi
+          # 检查结果
+          echo "===== Final Nginx IP List (first 10 lines) ====="
+          head nginx_jp_ip_list.conf
 
       - name: Force commit and push
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           
-          # 强制添加文件，无论是否存在或有变化
-          git add -f all_ips_nginx/nginx_jp_ip_list.conf
+          # 强制添加文件
+          git add -f nginx_jp_ip_list.conf
           
           # 提交更改
           git commit -m "Update Japan IP list [$(date -u)]" --allow-empty
           
-          # 强制推送更改
+          # 推送更改
           git push
