@@ -1,0 +1,38 @@
+name: Update China & Hong Kong IP List for Nginx
+
+on:
+  schedule:
+    - cron: '0 17 * * *'  # 每天 UTC 时间 17:00（北京时间 01:00）
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Fetch China & Hong Kong IP lists and format for Nginx
+        run: |
+          # 下载中国大陆和香港的 IP 地址列表
+          curl -s https://ispip.clang.cn/all_cn_cidr.txt -o all_cn_cidr.txt
+          curl -s https://ispip.clang.cn/hk_cidr.txt -o hk_cidr.txt
+          
+          # 合并两个文件，去除 # 号开头的注释行，并转换为 Nginx 格式
+          cat all_cn_cidr.txt hk_cidr.txt | grep -v '^#' | sort -u | awk '{print "allow " $0 ";"}' > nginx_ip_list.conf
+          
+          # 添加 deny all; 以阻止其他 IP
+          echo "deny all;" >> nginx_ip_list.conf
+
+          # 显示合并后的 Nginx 配置文件（可选）
+          cat nginx_ip_list.conf
+
+      - name: Commit and push if changed
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+          git add nginx_ip_list.conf
+          git commit -m "Update China & Hong Kong IP list for Nginx" || exit 0
+          git push
