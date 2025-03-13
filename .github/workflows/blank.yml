@@ -1,4 +1,4 @@
-name: Update China & Hong Kong IP List for Nginx
+name: Update Japan IP List with Manual Routes for Nginx
 
 on:
   schedule:
@@ -12,27 +12,41 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # 确保获取完整历史，避免冲突
 
-      - name: Fetch China & Hong Kong IP lists and format for Nginx
+      - name: Fetch Japan IP list
         run: |
-          # 下载中国大陆和香港的 IP 地址列表
-          curl -s https://ispip.clang.cn/all_cn_cidr.txt -o all_cn_cidr.txt
-          curl -s https://ispip.clang.cn/hk_cidr.txt -o hk_cidr.txt
+          # 下载日本 IP 地址列表
+          curl -s http://www.iwik.org/ipcountry/JP.cidr -o jp_cidr_raw.txt
           
-          # 合并两个文件，去除 # 号开头的注释行，并转换为 Nginx 格式
-          cat all_cn_cidr.txt hk_cidr.txt | grep -v '^#' | sort -u | awk '{print "allow " $0 ";"}' > nginx_ip_list.conf
-          
-          # 添加 deny all; 以阻止其他 IP
-          echo "deny all;" >> nginx_ip_list.conf
+          # 去除 # 号开头的注释行，并去重
+          grep -v '^#' jp_cidr_raw.txt | sort -u > jp_cidr.txt
 
-          # 显示合并后的 Nginx 配置文件（可选）
-          cat nginx_ip_list.conf
+          # 读取手动维护的 manual_routes.txt
+          if [[ -f manual_routes.txt ]]; then
+            cat manual_routes.txt >> jp_cidr.txt
+          fi
+
+          # 安装 iprange 进行 CIDR 聚合
+          sudo apt update && sudo apt install -y iprange
+          iprange --aggregate jp_cidr.txt > jp_cidr_aggregated.txt
+
+          # 生成最终的 Nginx 配置文件
+          awk '{print $0 " yes;"}' jp_cidr_aggregated.txt > nginx_jp_ip_list.conf
+
+          # 显示最终结果（可选）
+          echo "===== Final Nginx IP List ====="
+          cat nginx_jp_ip_list.conf
 
       - name: Commit and push if changed
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
 
-          git add nginx_ip_list.conf
-          git commit -m "Update China & Hong Kong IP list for Nginx" || exit 0
+          # 防止手动修改的 manual_routes.txt 被覆盖
+          git pull --rebase
+
+          git add nginx_jp_ip_list.conf
+          git commit -m "Update Japan IP list with Manual Routes for Nginx" || exit 0
           git push
