@@ -8,13 +8,12 @@ on:
 jobs:
   update:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-        with:
-          # 确保获取完整的仓库历史
-          fetch-depth: 0
 
       - name: Install aggregate (for IPv4 CIDR aggregation)
         run: |
@@ -37,32 +36,27 @@ jobs:
             cat manual_routes.txt >> jp_cidr_aggregated.txt
           fi
 
-          # 去重 & 生成最终的 Nginx 配置文件（修复格式问题）
-          sort -u jp_cidr_aggregated.txt | awk '{print $0 " yes;"}' > nginx_jp_ip_list.conf
+          # 确保目录存在
+          mkdir -p all_ips_nginx
+
+          # 去重 & 生成最终的 Nginx 配置文件
+          sort -u jp_cidr_aggregated.txt | awk '{print $0 " yes;"}' > all_ips_nginx/nginx_jp_ip_list.conf
           
           # 检查第一行是否只有"yes;"，如果是，则删除它
-          if grep -q "^yes;" nginx_jp_ip_list.conf; then
-            sed -i '1d' nginx_jp_ip_list.conf
+          if grep -q "^yes;" all_ips_nginx/nginx_jp_ip_list.conf; then
+            sed -i '1d' all_ips_nginx/nginx_jp_ip_list.conf
           fi
 
-          # 确保文件存在
-          ls -la
-          echo "===== Final Nginx IP List ====="
-          cat nginx_jp_ip_list.conf
-
-      - name: Commit and push if changed
+      - name: Force commit and push
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           
-          # 强制添加文件，即使没有更改
-          git add -f nginx_jp_ip_list.conf
+          # 强制添加文件，无论是否存在或有变化
+          git add -f all_ips_nginx/nginx_jp_ip_list.conf
           
-          # 使用--allow-empty强制提交，即使没有更改
+          # 提交更改
           git commit -m "Update Japan IP list [$(date -u)]" --allow-empty
           
-          # 确保推送成功，添加错误处理和调试信息
-          echo "Pushing changes to repository..."
-          git push || (echo "Push failed! Current status:" && git status && exit 1)
-          
-          echo "Push completed successfully"
+          # 强制推送更改
+          git push
