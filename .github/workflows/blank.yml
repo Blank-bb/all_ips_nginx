@@ -19,6 +19,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y aggregate
+          sudo rm -rf nginx_jp_ip_list.conf
 
       - name: Fetch Japan IP list
         run: |
