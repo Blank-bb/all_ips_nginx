@@ -12,8 +12,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0  # 确保获取完整历史，避免冲突
 
       - name: Install aggregate (for IPv4 CIDR aggregation)
         run: |
@@ -52,14 +50,6 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
 
-          # 重新拉取最新代码，避免冲突
-          git fetch --all
-          git reset --hard origin/main  # 确保同步到最新分支
-          git pull --rebase
-
           # 确保 Git 发现 nginx_jp_ip_list.conf 发生变更
           git add nginx_jp_ip_list.conf
-
-          # 强制提交，即使 Git 认为没有变化
-          git commit -m "Update Japan IP list with Manual Routes at $(date -u)" --allow-empty
-          git push --force
+          git push
