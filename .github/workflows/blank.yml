@@ -15,6 +15,11 @@ jobs:
         with:
           fetch-depth: 0  # 确保获取完整历史，避免冲突
 
+      - name: Install aggregate (for IPv4 CIDR aggregation)
+        run: |
+          sudo apt update
+          sudo apt install -y aggregate
+
       - name: Fetch Japan IP list
         run: |
           # 下载日本 IP 地址列表
@@ -28,9 +33,8 @@ jobs:
             cat manual_routes.txt >> jp_cidr.txt
           fi
 
-          # 安装 iprange 进行 CIDR 聚合
-          sudo apt update && sudo apt install -y iprange
-          iprange --aggregate jp_cidr.txt > jp_cidr_aggregated.txt
+          # 使用 aggregate 进行 IPv4 CIDR 聚合
+          aggregate < jp_cidr.txt > jp_cidr_aggregated.txt
 
           # 生成最终的 Nginx 配置文件
           awk '{print $0 " yes;"}' jp_cidr_aggregated.txt > nginx_jp_ip_list.conf
